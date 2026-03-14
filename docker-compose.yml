@@ -1,0 +1,92 @@
+services:
+  # ── Squid sidecar — network filtering ──────────────────────────────────
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    image: pi-proxy
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - pi-net
+    # No ports exposed to the host — only accessible within pi-net
+    restart: "no"
+
+  # ── Pi agent ───────────────────────────────────────────────────────────
+  pi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pi-agent
+    stdin_open: true
+    tty: true
+    depends_on:
+      - proxy
+
+    # ── OAuth callback port ──────────────────────────────────────────────
+    # Pi starts a local HTTP server for the Anthropic OAuth redirect.
+    # Publishing this port lets the host browser reach it inside the container.
+    ports:
+      - "53692:53692"
+
+    # ── Security ────────────────────────────────────────────────────────
+    # No NET_ADMIN, no elevated capabilities. Proxy is external (sidecar).
+    security_opt:
+      - no-new-privileges:true
+
+    # ── Resource limits ─────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+          cpus: "2.0"
+          pids: 512
+        reservations:
+          memory: 512m
+
+    volumes:
+      # ── The repo you're working in (set by launcher) ─────────────────
+      - ${PI_REPO:-.}:/workspace:rw
+
+      # ── Global config injected into the container ────────────────────
+      - ${PI_DOCKER_HOME:-.}/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+      - ${PI_DOCKER_HOME:-.}/AGENTS.md:/defaults/AGENTS.md:ro
+      - ${PI_DOCKER_HOME:-.}/extensions:/defaults/extensions:ro
+
+      # ── Pi config (persists auth, sessions across all repos) ─────────
+      # Bind-mount the host's pi auth dir so the container reuses the same
+      # Anthropic session — no separate OAuth flow needed inside Docker.
+      - ${HOME}/.pi/agent:/home/piuser/.pi/agent:rw
+
+      # ── Ollama models config (optional — uncomment for local models) ─
+      # - ${PI_DOCKER_HOME:-.}/models.json:/home/piuser/.pi/agent/models.json:ro
+
+    environment:
+      # Subagent config
+      PI_WORKSPACE: /workspace
+      PI_SUBAGENT_TIMEOUT_MINUTES: "30"
+
+      # Route all traffic through the Squid sidecar
+      http_proxy: "http://proxy:3128"
+      https_proxy: "http://proxy:3128"
+      HTTP_PROXY: "http://proxy:3128"
+      HTTPS_PROXY: "http://proxy:3128"
+      no_proxy: "localhost,127.0.0.1"
+      NO_PROXY: "localhost,127.0.0.1"
+
+      # GitHub auth — fine-grained PAT passed in by the launcher
+      GH_TOKEN: "${PI_GH_TOKEN:-}"
+
+      # ── Local model fallback ──────────────────────────────────────────
+      # Uncomment when switching to Ollama (also uncomment acl in squid.conf
+      # and the models.json volume mount above)
+      # OLLAMA_HOST: http://host.docker.internal:11434
+
+    networks:
+      - pi-net
+
+networks:
+  pi-net:
+    driver: bridge
+
+volumes: {}

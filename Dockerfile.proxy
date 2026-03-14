@@ -1,0 +1,15 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    squid \
+    && rm -rf /var/lib/apt/lists/*
+
+# Squid config is bind-mounted at runtime
+EXPOSE 3128
+
+# Squid drops to the 'proxy' user, which can't write to /dev/stdout or
+# /dev/stderr by default. Fix permissions before starting.
+COPY proxy-entrypoint.sh /proxy-entrypoint.sh
+RUN chmod +x /proxy-entrypoint.sh
+
+CMD ["/proxy-entrypoint.sh"]
