@@ -23,12 +23,6 @@ services:
     depends_on:
       - proxy
 
-    # ── OAuth callback port ──────────────────────────────────────────────
-    # Pi starts a local HTTP server for the Anthropic OAuth redirect.
-    # Publishing this port lets the host browser reach it inside the container.
-    ports:
-      - "53692:53692"
-
     # ── Security ────────────────────────────────────────────────────────
     # No NET_ADMIN, no elevated capabilities. Proxy is external (sidecar).
     security_opt:
