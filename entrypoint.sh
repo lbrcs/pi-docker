@@ -19,5 +19,14 @@ fi
 # Ensure piuser owns the .pi directory inside the workspace
 chown -R piuser:piuser /workspace/.pi 2>/dev/null || true
 
+# ── Inject GH_TOKEN into git remote URL ─────────────────────────────────
+if [ -n "$GH_TOKEN" ] && [ -d /workspace/.git ]; then
+    REMOTE_URL=$(git -C /workspace remote get-url origin 2>/dev/null || true)
+    if echo "$REMOTE_URL" | grep -q "github.com"; then
+        NEW_URL=$(echo "$REMOTE_URL" | sed "s|https://[^@]*@github.com|https://x-access-token:${GH_TOKEN}@github.com|; s|https://github.com|https://x-access-token:${GH_TOKEN}@github.com|")
+        git -C /workspace remote set-url origin "$NEW_URL"
+    fi
+fi
+
 # ── Drop to piuser via gosu ─────────────────────────────────────────────
 exec gosu piuser bash -c 'cd /workspace && exec "$@"' _ "$@"

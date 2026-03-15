@@ -2,3 +2,5 @@
 *.token
 .gh-auth-token
 models.json
+.worktrees/
+.pi/

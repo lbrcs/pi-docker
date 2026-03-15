@@ -1,6 +1,8 @@
-# Pi Coding Agent — Global Docker Setup
+# Pi Coding Agent — Global Docker Setup (macOS)
 
 Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker container with network filtering, resource limits, and git-worktree-based subagent orchestration — across any of your repos.
+
+> **Platform:** This setup is designed for **macOS** with Docker Desktop. Linux users may need to adjust the OAuth auth container (e.g. `--network=host` works on Linux and is simpler than the `socat` approach used here).
 
 ---
 
@@ -66,22 +68,41 @@ The PAT needs **Contents: Read & write** and **Pull requests: Read & write** on 
 # Clone this repo once — anywhere you like
 git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
 
-# Make the launcher executable (already done if you cloned)
-chmod +x ~/pi-docker/pi-docker
+# Install to ~/.pi-docker
+rsync -av --exclude='.git' ~/pi-docker/ ~/.pi-docker/
 
-# Add it to your PATH (pick one)
-echo 'export PATH="$HOME/pi-docker:$PATH"' >> ~/.bashrc   # Linux
-echo 'export PATH="$HOME/pi-docker:$PATH"' >> ~/.zshrc    # macOS
+# Make the launchers executable
+chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
 
-# Reload
-source ~/.bashrc  # or ~/.zshrc
+# Add to your PATH
+echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ---
 
-## 4. Configuration
+## 4. Authentication
 
-### 4a. GitHub Token
+### First-time Anthropic login
+
+Pi uses OAuth to authenticate with your Claude Pro/Max subscription. Because the OAuth flow requires a browser redirect to `localhost`, authentication runs in a separate container with host networking:
+
+```bash
+# Run once (or whenever your refresh token expires)
+pi-docker-auth
+```
+
+This launches pi in a minimal container — no repo mounted, no GitHub access, no proxy. Type `/login`, select **Anthropic**, and complete the browser flow. Tokens are saved to `~/.pi/agent/auth.json` and automatically shared with `pi-docker` via a bind mount.
+
+**Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
+
+> **Why a separate container?** Pi's OAuth callback server normally binds to `127.0.0.1`, making it unreachable via Docker port mapping. The Docker image patches it to bind to `0.0.0.0` so that `-p 53692:53692` works. No repo is mounted and no proxy is used — the container exists only for login.
+
+---
+
+## 5. Configuration
+
+### 5a. GitHub Token
 
 **Option A: Token file (recommended)**
 
@@ -99,7 +120,7 @@ export PI_GH_TOKEN="github_pat_..."
 
 The env var takes priority over the file. The launcher will warn you if neither is set and ask whether to continue without GitHub access.
 
-### 4b. Network Allowlist (`squid.conf`)
+### 5b. Network Allowlist (`squid.conf`)
 
 Edit `squid.conf` to add or remove domains. The defaults are:
 
@@ -118,11 +139,11 @@ acl allowed_domains dstdomain new-domain.example.com
 
 Then restart the proxy: `docker compose restart proxy`
 
-### 4c. Agent Defaults (`AGENTS.md` + `extensions/`)
+### 5c. Agent Defaults (`AGENTS.md` + `extensions/`)
 
 These files are injected into `/workspace/.pi/` at startup **only if the repo doesn't already have its own**. This lets you set global defaults while allowing per-repo overrides.
 
-### 4d. Resource Limits
+### 5d. Resource Limits
 
 Edit `docker-compose.yml` under `deploy.resources.limits`:
 
@@ -134,7 +155,7 @@ limits:
 
 ---
 
-## 5. Usage
+## 6. Usage
 
 ```bash
 # cd into any git repo
@@ -159,7 +180,7 @@ What happens:
 
 ---
 
-## 6. Subagent Orchestration
+## 7. Subagent Orchestration
 
 The `worktree-subagent` extension gives pi a `spawn_subagent` tool that:
 
@@ -194,7 +215,7 @@ Pi:  I'll split this into two parallel tasks.
 
 ---
 
-## 7. Local Model Fallback (Ollama)
+## 8. Local Model Fallback (Ollama)
 
 To use a local Ollama instance instead of (or alongside) Claude:
 
@@ -235,7 +256,7 @@ volumes:
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -260,7 +281,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 
 ---
 
-## 9. Security Model
+## 10. Security Model
 
 | Control | Implementation |
 |---|---|
@@ -290,11 +311,12 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 
 ---
 
-## 10. File Reference
+## 11. File Reference
 
 | File | Purpose |
 |---|---|
 | `pi-docker` | Launcher script — run from any repo |
+| `pi-docker-auth` | OAuth login helper — run once for initial auth |
 | `entrypoint.sh` | Container init — injects defaults, drops to non-root |
 | `Dockerfile` | Pi agent image (Node 22, pi, git, gh) |
 | `Dockerfile.proxy` | Squid proxy image |

@@ -38,6 +38,20 @@ if [ -z "$PI_GH_TOKEN" ]; then
     fi
 fi
 
+# ── Check for Anthropic auth ─────────────────────────────────────────────
+PI_AUTH_FILE="$HOME/.pi/agent/auth.json"
+if [ ! -f "$PI_AUTH_FILE" ] || ! grep -q '"anthropic"' "$PI_AUTH_FILE" 2>/dev/null; then
+    echo ""
+    echo "⚠   No Anthropic auth found."
+    echo "   Run 'pi-docker-auth' first to log in via OAuth."
+    echo ""
+    read -p "Continue without Anthropic auth? [y/N] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
 # ── Ensure .worktrees/ is gitignored ─────────────────────────────────────
 GITIGNORE="$REPO_ROOT/.gitignore"
 if ! grep -qxF '.worktrees/' "$GITIGNORE" 2>/dev/null; then
