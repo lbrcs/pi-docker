@@ -64,7 +64,14 @@ if ! grep -qxF '.pi/' "$GITIGNORE" 2>/dev/null; then
 fi
 
 # ── Launch ────────────────────────────────────────────────────────────────
+# ── Build compose file list (add override if Ollama is enabled) ───────────
+COMPOSE_ARGS=(-f "$PI_DOCKER_HOME/docker-compose.yml")
+if [ -f "$PI_DOCKER_HOME/docker-compose.override.yml" ]; then
+    COMPOSE_ARGS+=(-f "$PI_DOCKER_HOME/docker-compose.override.yml")
+    echo "│ ollama: enabled (override detected)"
+fi
+
 PI_REPO="$REPO_ROOT" \
 PI_DOCKER_HOME="$PI_DOCKER_HOME" \
 PI_GH_TOKEN="${PI_GH_TOKEN:-}" \
-    docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" run --rm --service-ports pi "$@"
+    docker compose "${COMPOSE_ARGS[@]}" run --rm --service-ports pi "$@"

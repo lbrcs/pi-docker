@@ -72,7 +72,7 @@ git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
 rsync -av --exclude='.git' ~/pi-docker/ ~/.pi-docker/
 
 # Make the launchers executable
-chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
+chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth ~/.pi-docker/pi-docker-models
 
 # Add to your PATH
 echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
@@ -217,42 +217,67 @@ Pi:  I'll split this into two parallel tasks.
 
 ## 8. Local Model Fallback (Ollama)
 
-To use a local Ollama instance instead of (or alongside) Claude:
+Use local models via [Ollama](https://ollama.com) alongside (or instead of) Claude. Ollama runs on your host machine; the pi-docker container talks to it over HTTP.
 
-### Step 1: Uncomment in `squid.conf`
+### Prerequisites
 
-```
-acl ollama_host dst 172.17.0.1        # Linux
-# acl ollama_host dst host.docker.internal  # macOS/Windows
-acl ollama_port port 11434
-http_access allow ollama_host ollama_port
-```
+1. Install Ollama: [ollama.com/download](https://ollama.com/download)
+2. Start the server: `ollama serve`
+3. Pull a model: `ollama pull qwen2.5-coder:32b`
 
-### Step 2: Uncomment in `docker-compose.yml`
+### Enable Ollama integration
 
-```yaml
-environment:
-  OLLAMA_HOST: http://host.docker.internal:11434
-
-volumes:
-  - ${PI_DOCKER_HOME:-.}/models.json:/home/piuser/.pi/agent/models.json:ro
+```bash
+# One command — auto-detects platform, syncs all installed models
+pi-docker-models ollama enable
 ```
 
-### Step 3: Create `models.json`
+This generates three files (all gitignored):
+- `docker-compose.override.yml` — adds Ollama env var + volume mount
+- `squid-local.conf` — extends the allowlist to permit Ollama traffic
+- `models.json` — registers installed Ollama models with pi
 
-```json
-{
-  "default": "ollama/codellama:34b",
-  "models": {
-    "ollama/codellama:34b": {
-      "provider": "ollama",
-      "model": "codellama:34b"
-    }
-  }
-}
+The next time you run `pi-docker`, local models will appear in pi's model picker alongside Anthropic models.
+
+### Manage models
+
+```bash
+# Show installed Ollama models and which are configured
+pi-docker-models ollama list
+
+# Re-sync after pulling new models in Ollama
+pi-docker-models ollama sync
+
+# Add/remove individual models
+pi-docker-models ollama add codellama:34b
+pi-docker-models ollama remove codellama:34b
+
+# Check current status
+pi-docker-models status
 ```
 
-> `models.json` is in `.gitignore` — it won't be committed.
+### Disable Ollama integration
+
+```bash
+pi-docker-models ollama disable
+```
+
+This removes the generated files. The base `docker-compose.yml` and `squid.conf` are never modified.
+
+### Custom Ollama host
+
+If Ollama runs on a different machine:
+
+```bash
+pi-docker-models ollama enable --host 192.168.1.100
+```
+
+<details>
+<summary>Manual setup (advanced)</summary>
+
+If you prefer not to use the script, see the comments in `docker-compose.yml` and `squid.conf` for the three manual steps: uncomment the Ollama ACL in squid, uncomment the `OLLAMA_HOST` env var and `models.json` volume mount in compose, and create a `models.json` file following [pi's models.json docs](https://github.com/mariozechner/pi/blob/main/docs/models.md).
+
+</details>
 
 ---
 
@@ -317,6 +342,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 |---|---|
 | `pi-docker` | Launcher script — run from any repo |
 | `pi-docker-auth` | OAuth login helper — run once for initial auth |
+| `pi-docker-models` | Ollama integration manager — enable/disable local models |
 | `entrypoint.sh` | Container init — injects defaults, drops to non-root |
 | `Dockerfile` | Pi agent image (Node 22, pi, git, gh) |
 | `Dockerfile.proxy` | Squid proxy image |

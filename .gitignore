@@ -2,5 +2,7 @@
 *.token
 .gh-auth-token
 models.json
+docker-compose.override.yml
+squid-local.conf
 .worktrees/
 .pi/
