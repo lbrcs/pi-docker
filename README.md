@@ -103,7 +103,7 @@ This launches pi in a minimal container — no repo mounted, no GitHub access, n
 
 **Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
 
-> **Why a separate container?** The OAuth callback server binds to `127.0.0.1` inside the container, so normal Docker port mapping can't reach it. The auth container uses `socat` to forward from `0.0.0.0:53692` to `127.0.0.1:53692`, making the callback reachable via `-p 53692:53692`. No repo is mounted and no proxy is used — the container exists only for login.
+> **Why a separate container?** Pi's OAuth callback server normally binds to `127.0.0.1`, making it unreachable via Docker port mapping. The Docker image patches it to bind to `0.0.0.0` so that `-p 53692:53692` works. No repo is mounted and no proxy is used — the container exists only for login.
 
 ---
 
