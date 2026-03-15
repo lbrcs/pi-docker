@@ -2,12 +2,18 @@
 set -e
 
 # ── pi-docker-auth ────────────────────────────────────────────────────────
-# Launches pi in a minimal, locked-down container with --network=host so
-# the OAuth callback server (localhost:53692) is reachable from the host
-# browser. No repo is mounted — this container exists only for login.
+# Launches pi in a minimal container for OAuth login only.
+#
+# Pi's OAuth callback server binds to 127.0.0.1:53692 inside the container,
+# which is unreachable via Docker port mapping. We use socat to forward
+# from 0.0.0.0:53692 to 127.0.0.1:53692, making the callback reachable:
+#
+#   Browser → host:53692 → Docker → socat (0.0.0.0) → pi (127.0.0.1)
+#
+# No repo is mounted — this container exists only for login.
 #
 # Usage:
-#   ./pi-docker-auth
+#   pi-docker-auth
 #   Then type /login inside pi, select Anthropic, complete browser auth.
 #   Tokens are saved to ~/.pi/agent/auth.json and shared with pi-docker.
 # ──────────────────────────────────────────────────────────────────────────
@@ -27,11 +33,14 @@ echo "│ Type /login and select your provider."
 echo "│ Type /exit when done."
 echo "────────────────────────────────────────────"
 
+# Run with port mapping for the OAuth callback.
+# The entrypoint runs as root initially (for gosu), so we start socat
+# before dropping to piuser. We override the entrypoint to inject socat.
 docker run --rm -it \
-    --network=host \
+    -p 53692:53692 \
     -v "$HOME/.pi/agent:/home/piuser/.pi/agent:rw" \
     -v "$PI_DOCKER_HOME/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" \
-    -e no_proxy="*" \
-    -e NO_PROXY="*" \
+    --entrypoint bash \
     pi-agent \
-    pi
+    -c 'socat TCP-LISTEN:53692,bind=0.0.0.0,fork,reuseaddr TCP:127.0.0.1:53692 &
+        exec /usr/local/bin/entrypoint.sh pi'

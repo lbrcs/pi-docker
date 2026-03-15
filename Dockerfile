@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \
     curl \
     ca-certificates \
+    socat \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pi globally
