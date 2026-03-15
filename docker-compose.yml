@@ -52,8 +52,9 @@ services:
       # Anthropic session — no separate OAuth flow needed inside Docker.
       - ${HOME}/.pi/agent:/home/piuser/.pi/agent:rw
 
-      # ── Ollama models config (optional — uncomment for local models) ─
-      # - ${PI_DOCKER_HOME:-.}/models.json:/home/piuser/.pi/agent/models.json:ro
+      # ── Ollama models config (managed by pi-docker-models script) ────
+      # Run 'pi-docker-models ollama enable' to set up local models.
+      # The script generates docker-compose.override.yml with this mount.
 
     environment:
       # Subagent config
@@ -71,10 +72,9 @@ services:
       # GitHub auth — fine-grained PAT passed in by the launcher
       GH_TOKEN: "${PI_GH_TOKEN:-}"
 
-      # ── Local model fallback ──────────────────────────────────────────
-      # Uncomment when switching to Ollama (also uncomment acl in squid.conf
-      # and the models.json volume mount above)
-      # OLLAMA_HOST: http://host.docker.internal:11434
+      # ── Local model fallback (managed by pi-docker-models script) ────
+      # Run 'pi-docker-models ollama enable' to configure Ollama.
+      # The script generates docker-compose.override.yml with OLLAMA_HOST.
 
     networks:
       - pi-net
