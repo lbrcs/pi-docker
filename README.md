@@ -72,7 +72,7 @@ git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
 rsync -av --exclude='.git' ~/pi-docker/ ~/.pi-docker/
 
 # Make the launchers executable
-chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
+chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth ~/.pi-docker/pi-docker-models
 
 # Add to your PATH
 echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
@@ -342,6 +342,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 |---|---|
 | `pi-docker` | Launcher script — run from any repo |
 | `pi-docker-auth` | OAuth login helper — run once for initial auth |
+| `pi-docker-models` | Ollama integration manager — enable/disable local models |
 | `entrypoint.sh` | Container init — injects defaults, drops to non-root |
 | `Dockerfile` | Pi agent image (Node 22, pi, git, gh) |
 | `Dockerfile.proxy` | Squid proxy image |
