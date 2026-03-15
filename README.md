@@ -1,6 +1,8 @@
-# Pi Coding Agent — Global Docker Setup
+# Pi Coding Agent — Global Docker Setup (macOS)
 
 Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker container with network filtering, resource limits, and git-worktree-based subagent orchestration — across any of your repos.
+
+> **Platform:** This setup is designed for **macOS** with Docker Desktop. Linux users may need to adjust the OAuth auth container (e.g. `--network=host` works on Linux and is simpler than the `socat` approach used here).
 
 ---
 
@@ -66,15 +68,22 @@ The PAT needs **Contents: Read & write** and **Pull requests: Read & write** on 
 # Clone this repo once — anywhere you like
 git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
 
-# Make the launcher executable (already done if you cloned)
-chmod +x ~/pi-docker/pi-docker
+# Install to ~/.pi-docker
+rsync -av --exclude='.git' --exclude='.gh-auth-token' ~/pi-docker/ ~/.pi-docker/
 
-# Add it to your PATH (pick one)
-echo 'export PATH="$HOME/pi-docker:$PATH"' >> ~/.bashrc   # Linux
-echo 'export PATH="$HOME/pi-docker:$PATH"' >> ~/.zshrc    # macOS
+# Make the launchers executable
+chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
 
-# Reload
-source ~/.bashrc  # or ~/.zshrc
+# Add to your PATH
+echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+To update after pulling new changes:
+
+```bash
+cd ~/pi-docker && git pull
+rsync -av --exclude='.git' --exclude='.gh-auth-token' ~/pi-docker/ ~/.pi-docker/
 ```
 
 ---
