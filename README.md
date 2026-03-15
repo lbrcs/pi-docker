@@ -69,7 +69,7 @@ The PAT needs **Contents: Read & write** and **Pull requests: Read & write** on 
 git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
 
 # Install to ~/.pi-docker
-rsync -av --exclude='.git' --exclude='.gh-auth-token' ~/pi-docker/ ~/.pi-docker/
+rsync -av --exclude='.git' ~/pi-docker/ ~/.pi-docker/
 
 # Make the launchers executable
 chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
@@ -77,13 +77,6 @@ chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth
 # Add to your PATH
 echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-```
-
-To update after pulling new changes:
-
-```bash
-cd ~/pi-docker && git pull
-rsync -av --exclude='.git' --exclude='.gh-auth-token' ~/pi-docker/ ~/.pi-docker/
 ```
 
 ---
