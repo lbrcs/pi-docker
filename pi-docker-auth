@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -e
+
+# ── pi-docker-auth ────────────────────────────────────────────────────────
+# Launches pi in a minimal, locked-down container with --network=host so
+# the OAuth callback server (localhost:53692) is reachable from the host
+# browser. No repo is mounted — this container exists only for login.
+#
+# Usage:
+#   ./pi-docker-auth
+#   Then type /login inside pi, select Anthropic, complete browser auth.
+#   Tokens are saved to ~/.pi/agent/auth.json and shared with pi-docker.
+# ──────────────────────────────────────────────────────────────────────────
+
+PI_DOCKER_HOME="$(cd "$(dirname "$0")" && pwd -P)"
+
+# Ensure the auth directory exists on the host
+mkdir -p "$HOME/.pi/agent"
+
+# Build the image if needed (reuses the same pi-agent image as pi-docker)
+docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build pi 2>/dev/null
+
+echo "────────────────────────────────────────────"
+echo "│ pi-docker-auth"
+echo "│"
+echo "│ Type /login and select your provider."
+echo "│ Type /exit when done."
+echo "────────────────────────────────────────────"
+
+docker run --rm -it \
+    --network=host \
+    -v "$HOME/.pi/agent:/home/piuser/.pi/agent:rw" \
+    -v "$PI_DOCKER_HOME/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" \
+    -e no_proxy="*" \
+    -e NO_PROXY="*" \
+    pi-agent \
+    pi
