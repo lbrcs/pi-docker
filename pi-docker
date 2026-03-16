@@ -4,6 +4,18 @@ set -e
 # ── Resolve pi-docker home (where this script lives) ─────────────────────
 PI_DOCKER_HOME="$(cd "$(dirname "$0")" && pwd -P)"
 
+# ── Parse --rebuild flag ──────────────────────────────────────────────────
+REBUILD=0
+PASSTHROUGH_ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--rebuild" ]; then
+        REBUILD=1
+    else
+        PASSTHROUGH_ARGS+=("$arg")
+    fi
+done
+set -- "${PASSTHROUGH_ARGS[@]}"
+
 # ── Find the repo root ───────────────────────────────────────────────────
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "Error: not inside a git repository." >&2
@@ -18,6 +30,14 @@ echo "│ repo:   $(basename "$REPO_ROOT")"
 echo "│ branch: $BRANCH"
 echo "│ path:   $REPO_ROOT"
 echo "────────────────────────────────────────────"
+
+# ── Rebuild image if requested ────────────────────────────────────────────
+if [ "$REBUILD" -eq 1 ]; then
+    echo "│ Rebuilding Docker images..."
+    docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build
+    echo "│ Rebuild complete."
+    echo "────────────────────────────────────────────"
+fi
 
 # ── Load GitHub token ────────────────────────────────────────────────────
 # Priority: PI_GH_TOKEN env var > ~/.pi-docker/.gh-auth-token file
@@ -49,6 +69,28 @@ if [ ! -f "$PI_AUTH_FILE" ] || ! grep -q '"anthropic"' "$PI_AUTH_FILE" 2>/dev/nu
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
+    fi
+else
+    # Check if the access token is expired (python3 may not be available on all hosts)
+    if command -v python3 >/dev/null 2>&1; then
+        TOKEN_EXPIRES=$(python3 -c "
+import json, sys
+try:
+    data = json.load(open('$PI_AUTH_FILE'))
+    cred = data.get('anthropic', {})
+    expires = cred.get('expires', 0)
+    print(int(expires))
+except Exception:
+    print(0)
+" 2>/dev/null)
+        NOW_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
+        if [ -n "$TOKEN_EXPIRES" ] && [ "$TOKEN_EXPIRES" -gt 0 ] && [ "$TOKEN_EXPIRES" -lt "$NOW_MS" ]; then
+            echo ""
+            echo "⚠   Anthropic session token is expired."
+            echo "   Pi will attempt to refresh it automatically on startup."
+            echo "   If you see auth errors, run 'pi-docker-auth' to re-authenticate."
+            echo ""
+        fi
     fi
 fi
 

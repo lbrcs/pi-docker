@@ -5,6 +5,10 @@ services:
       context: .
       dockerfile: Dockerfile.proxy
     image: pi-proxy
+    read_only: true
+    tmpfs:
+      - /run:uid=13,gid=13
+      - /var/log/squid:uid=13,gid=13
     volumes:
       - ./squid.conf:/etc/squid/squid.conf:ro
     networks:
@@ -37,6 +41,9 @@ services:
           pids: 512
         reservations:
           memory: 512m
+
+    tmpfs:
+      - /tmp
 
     volumes:
       # ── The repo you're working in (set by launcher) ─────────────────
