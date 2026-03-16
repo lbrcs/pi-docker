@@ -75,7 +75,10 @@ export default function (pi: ExtensionAPI) {
       }
 
       // 3. Create the worktree
-      onUpdate(`Creating worktree: ${worktreePath} (branch: ${branchName})`);
+      onUpdate?.({
+        content: [{ type: "text", text: `[${task_name}] Creating worktree: ${worktreePath} (branch: ${branchName})` }],
+        details: {},
+      });
       try {
         execSync(`git worktree add "${worktreePath}" -b "${branchName}"`, {
           cwd: workspace,
@@ -114,9 +117,10 @@ When you have completed the task:
 7. Also output the PR URL as the very last line of your response (starting with https://).`;
 
       // 6. Spawn with timeout
-      onUpdate(
-        `Spawning subagent for '${task_name}' (timeout: ${timeoutMinutes}m)...`
-      );
+      onUpdate?.({
+        content: [{ type: "text", text: `[${task_name}] Spawning subagent (timeout: ${timeoutMinutes}m)...` }],
+        details: {},
+      });
 
       const timeoutMs = timeoutMinutes * 60 * 1000;
       const timeoutController = new AbortController();
@@ -137,21 +141,20 @@ When you have completed the task:
         });
 
         let output = "";
-        let lastUpdate = "";
 
-        child.stdout.on("data", (chunk: Buffer) => {
-          const text = chunk.toString();
-          output += text;
-          const trimmed = text.trim();
-          if (trimmed && trimmed !== lastUpdate) {
-            onUpdate(`[${task_name}] ${trimmed.slice(0, 200)}`);
-            lastUpdate = trimmed;
-          }
-        });
-
-        child.stderr.on("data", (chunk: Buffer) => {
+        const handleChunk = (chunk: Buffer) => {
           output += chunk.toString();
-        });
+          // Send last 3000 chars as the current partial result.
+          // onUpdate replaces the previous update, so we send the rolling tail.
+          const tail = output.length > 3000 ? "..." + output.slice(-3000) : output;
+          onUpdate?.({
+            content: [{ type: "text", text: `[${task_name}]\n${tail}` }],
+            details: {},
+          });
+        };
+
+        child.stdout.on("data", handleChunk);
+        child.stderr.on("data", handleChunk);
 
         child.on("close", (code) => {
           clearTimeout(timer);
