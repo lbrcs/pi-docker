@@ -92,7 +92,11 @@ Pi uses OAuth to authenticate with your Claude Pro/Max subscription. Because the
 pi-docker-auth
 ```
 
-This launches pi in a minimal container — no repo mounted, no GitHub access, no proxy. Type `/login`, select **Anthropic**, and complete the browser flow. Tokens are saved to `~/.pi/agent/auth.json` and automatically shared with `pi-docker` via a bind mount.
+This launches pi in a **restricted, auth-only session** — no repo mounted, no GitHub access, no proxy, and no file/bash tools (`--no-tools`). Type `/login`, select **Anthropic**, and complete the browser flow. Tokens are saved to `~/.pi/agent/auth.json` and automatically shared with `pi-docker` via a bind mount.
+
+> ⚠ **Auth-only mode:** The `pi-docker-auth` session deliberately disables all coding tools. Do not use it for coding tasks — use `pi-docker` for normal agent sessions.
+
+> ⏱ **10-minute timeout:** The auth container automatically terminates after 10 minutes. If it times out before you finish, simply run `pi-docker-auth` again.
 
 **Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
 
