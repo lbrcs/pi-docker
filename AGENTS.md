@@ -17,8 +17,11 @@
 Orchestrator responsibilities:
 1. Use the `spawn_subagent` tool to delegate a well-scoped task.
 2. Provide complete, unambiguous instructions including acceptance criteria.
-3. After the subagent finishes, report the PR URL to the user.
-4. Do not merge PRs — the user reviews and merges.
+3. After the subagent finishes, clean up its worktree:
+   - Run `git worktree remove --force /workspace/.worktrees/<task-name>`
+   - Run `rm -rf /workspace/.worktrees/<task-name>` to ensure it's fully gone
+4. Report the PR URL to the user.
+5. Do not merge PRs — the user reviews and merges.
 
 Subagent responsibilities:
 1. Work only inside your assigned worktree.

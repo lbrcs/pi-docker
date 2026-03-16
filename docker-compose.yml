@@ -24,6 +24,7 @@ services:
     image: pi-agent
     stdin_open: true
     tty: true
+    init: true
     depends_on:
       - proxy
 
