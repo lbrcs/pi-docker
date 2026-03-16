@@ -48,8 +48,9 @@ try {
 }
 
 # ── Drop to piuser via gosu ─────────────────────────────────────────────
-# Run in background so the EXIT trap fires when the container stops.
-gosu piuser bash -c 'cd /workspace && exec "$@"' _ "$@" &
-CHILD_PID=$!
-trap 'kill -TERM $CHILD_PID 2>/dev/null; wait $CHILD_PID; cleanup_auth' EXIT TERM INT
-wait $CHILD_PID
+# `init: true` in docker-compose.yml runs tini as PID 1, which properly
+# forwards SIGTERM to this script. Since we're no longer PID 1, bash
+# handles SIGTERM normally → the EXIT trap fires → cleanup_auth runs.
+# Foreground execution preserves stdin (Enter key works for pi input).
+trap 'cleanup_auth' EXIT
+gosu piuser bash -c 'cd /workspace && exec "$@"' _ "$@"
