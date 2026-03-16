@@ -23,16 +23,45 @@ mkdir -p "$HOME/.pi/agent"
 # Build the image if needed (reuses the same pi-agent image as pi-docker)
 docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build pi 2>/dev/null
 
-echo "────────────────────────────────────────────"
-echo "│ pi-docker-auth"
+echo "────────────────────────────────────────────────────"
+echo "│ pi-docker-auth  ⚠  AUTH MODE ONLY"
 echo "│"
-echo "│ Type /login and select your provider."
-echo "│ Type /exit when done."
-echo "────────────────────────────────────────────"
+echo "│ This container has NO proxy, NO sandbox, and"
+echo "│ NO resource limits. It exists only for login."
+echo "│"
+echo "│ Steps:"
+echo "│   1. Type /login and select Anthropic"
+echo "│   2. Complete the browser OAuth flow"
+echo "│   3. Type /exit immediately when done"
+echo "│"
+echo "│ ⚠  Do NOT use this session for coding tasks."
+echo "│    Use 'pi-docker' for normal agent sessions."
+echo "│"
+echo "│ ⏱  Auto-terminates in 10 minutes."
+echo "────────────────────────────────────────────────────"
+echo ""
+echo "⚠  This session will auto-terminate in 10 minutes."
+echo ""
 
-docker run --rm -it \
+if ! timeout 600 docker run --rm -it \
     -p 53692:53692 \
     -v "$HOME/.pi/agent:/home/piuser/.pi/agent:rw" \
     -v "$PI_DOCKER_HOME/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" \
     pi-agent \
-    pi
+    pi --no-tools --system-prompt "AUTH MODE ONLY. This pi session exists solely for OAuth login. Use /login to authenticate with Anthropic, then /exit when done. No coding, file access, or other tasks — use pi-docker for that."; then
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 124 ]; then
+        echo ""
+        echo "────────────────────────────────────────────"
+        echo "│ ⏱  Auth session timed out (10 minutes)."
+        echo "│ Run 'pi-docker-auth' again if needed."
+        echo "────────────────────────────────────────────"
+    fi
+else
+    echo ""
+    echo "────────────────────────────────────────────────────"
+    echo "│ ✓  Auth session ended."
+    echo "│ You are now back on your HOST shell."
+    echo "│ Run 'pi-docker' to start a sandboxed session."
+    echo "────────────────────────────────────────────────────"
+fi
