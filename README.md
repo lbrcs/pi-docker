@@ -100,6 +100,8 @@ This launches pi in a **restricted, auth-only session** — no repo mounted, no 
 
 **Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
 
+**Sessions are cleared on container stop.** When a `pi-docker` container exits, the `anthropic` key is automatically removed from `auth.json`. This means every new `pi-docker` session starts in a logged-out state, so you will never encounter a stale "logged in but expired" situation. Run `pi-docker-auth` once before each working session (or rely on automatic token refresh if your session was recent).
+
 > **Why a separate container?** Pi's OAuth callback server normally binds to `127.0.0.1`, making it unreachable via Docker port mapping. The Docker image patches it to bind to `0.0.0.0` so that `-p 53692:53692` works. No repo is mounted and no proxy is used — the container exists only for login.
 
 ---
@@ -173,6 +175,9 @@ pi-docker "refactor the auth module"
 
 # Or run with a specific prompt
 pi-docker -p "add unit tests for utils.ts"
+
+# Force rebuild of Docker images (e.g. after updating pi-docker)
+pi-docker --rebuild
 ```
 
 What happens:
@@ -297,6 +302,8 @@ If you prefer not to use the script, see the comments in `docker-compose.yml` an
 | `permission denied` on entrypoint | Run `chmod +x ~/pi-docker/entrypoint.sh` |
 | Container OOM killed | Increase `memory` limit in `docker-compose.yml` |
 | Worktree conflicts | Run `/cleanup-all` to remove stale worktrees |
+| Image out of date after `pi-docker` update | Run `pi-docker --rebuild` to rebuild Docker images |
+| `⚠ Anthropic session token is expired` on startup | Run `pi-docker-auth` to re-authenticate; pi will attempt an automatic refresh but may fail if the refresh token is also expired |
 
 ### Viewing logs
 
@@ -321,6 +328,9 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 | **Filesystem isolation** | Only the target repo is mounted (at `/workspace`) |
 | **Secret management** | `GH_TOKEN` passed via env var, never written to the image |
 | **Worktree isolation** | Each subagent works in its own worktree — no conflicts |
+| **Read-only proxy filesystem** | Squid proxy container runs with `read_only: true`; only tmpfs dirs are writable |
+| **Credentials on tmpfs** | `.git-credentials` written to `/tmp` (tmpfs) — never touches persistent storage |
+| **Container stop clears auth** | Stopping the container wipes tmpfs — credentials don't survive restarts |
 
 ### What pi CAN do
 
