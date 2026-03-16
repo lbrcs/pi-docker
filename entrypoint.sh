@@ -26,5 +26,28 @@ if [ -n "$GH_TOKEN" ]; then
     chown piuser:piuser /home/piuser/.git-credentials /home/piuser/.gitconfig
 fi
 
+# ── Logout Anthropic session on container stop ────────────────────────────
+# Removing the 'anthropic' key from auth.json on EXIT ensures that each new
+# pi-docker session starts unauthenticated. This prevents the confusing
+# "logged in but session expired" state when restarting containers or
+# switching branches.
+cleanup_auth() {
+    AUTH_FILE="/home/piuser/.pi/agent/auth.json"
+    if [ -f "$AUTH_FILE" ]; then
+        node -e "
+const fs = require('fs');
+try {
+    const data = JSON.parse(fs.readFileSync('$AUTH_FILE', 'utf8'));
+    delete data.anthropic;
+    fs.writeFileSync('$AUTH_FILE', JSON.stringify(data, null, 2));
+} catch(e) {}
+" 2>/dev/null || true
+    fi
+}
+
 # ── Drop to piuser via gosu ─────────────────────────────────────────────
-exec gosu piuser bash -c 'cd /workspace && exec "$@"' _ "$@"
+# Run in background so the EXIT trap fires when the container stops.
+gosu piuser bash -c 'cd /workspace && exec "$@"' _ "$@" &
+CHILD_PID=$!
+trap 'kill -TERM $CHILD_PID 2>/dev/null; wait $CHILD_PID; cleanup_auth' EXIT TERM INT
+wait $CHILD_PID

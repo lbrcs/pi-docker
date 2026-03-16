@@ -50,6 +50,28 @@ if [ ! -f "$PI_AUTH_FILE" ] || ! grep -q '"anthropic"' "$PI_AUTH_FILE" 2>/dev/nu
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         exit 1
     fi
+else
+    # Check if the access token is expired (python3 may not be available on all hosts)
+    if command -v python3 >/dev/null 2>&1; then
+        TOKEN_EXPIRES=$(python3 -c "
+import json, sys
+try:
+    data = json.load(open('$PI_AUTH_FILE'))
+    cred = data.get('anthropic', {})
+    expires = cred.get('expires', 0)
+    print(int(expires))
+except Exception:
+    print(0)
+" 2>/dev/null)
+        NOW_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
+        if [ -n "$TOKEN_EXPIRES" ] && [ "$TOKEN_EXPIRES" -gt 0 ] && [ "$TOKEN_EXPIRES" -lt "$NOW_MS" ]; then
+            echo ""
+            echo "⚠   Anthropic session token is expired."
+            echo "   Pi will attempt to refresh it automatically on startup."
+            echo "   If you see auth errors, run 'pi-docker-auth' to re-authenticate."
+            echo ""
+        fi
+    fi
 fi
 
 # ── Ensure .worktrees/ is gitignored ─────────────────────────────────────

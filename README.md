@@ -96,6 +96,8 @@ This launches pi in a minimal container — no repo mounted, no GitHub access, n
 
 **Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
 
+**Sessions are cleared on container stop.** When a `pi-docker` container exits, the `anthropic` key is automatically removed from `auth.json`. This means every new `pi-docker` session starts in a logged-out state, so you will never encounter a stale "logged in but expired" situation. Run `pi-docker-auth` once before each working session (or rely on automatic token refresh if your session was recent).
+
 > **Why a separate container?** Pi's OAuth callback server normally binds to `127.0.0.1`, making it unreachable via Docker port mapping. The Docker image patches it to bind to `0.0.0.0` so that `-p 53692:53692` works. No repo is mounted and no proxy is used — the container exists only for login.
 
 ---
@@ -293,6 +295,7 @@ If you prefer not to use the script, see the comments in `docker-compose.yml` an
 | `permission denied` on entrypoint | Run `chmod +x ~/pi-docker/entrypoint.sh` |
 | Container OOM killed | Increase `memory` limit in `docker-compose.yml` |
 | Worktree conflicts | Run `/cleanup-all` to remove stale worktrees |
+| `⚠ Anthropic session token is expired` on startup | Run `pi-docker-auth` to re-authenticate; pi will attempt an automatic refresh but may fail if the refresh token is also expired |
 
 ### Viewing logs
 
