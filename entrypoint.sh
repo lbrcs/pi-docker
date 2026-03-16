@@ -21,9 +21,11 @@ chown -R piuser:piuser /workspace/.pi 2>/dev/null || true
 
 # ── Configure git credentials for piuser (container-local, never touches repo) ──
 if [ -n "$GH_TOKEN" ]; then
-    echo "https://x-access-token:${GH_TOKEN}@github.com" > /home/piuser/.git-credentials
-    git config --file /home/piuser/.gitconfig credential.helper store
-    chown piuser:piuser /home/piuser/.git-credentials /home/piuser/.gitconfig
+    # Write credentials to /tmp (tmpfs) so they never touch persistent storage
+    echo "https://x-access-token:${GH_TOKEN}@github.com" > /tmp/.git-credentials
+    chmod 600 /tmp/.git-credentials
+    git config --file /home/piuser/.gitconfig credential.helper "store --file /tmp/.git-credentials"
+    chown piuser:piuser /tmp/.git-credentials /home/piuser/.gitconfig
 fi
 
 # ── Logout Anthropic session on container stop ────────────────────────────
