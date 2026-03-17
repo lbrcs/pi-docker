@@ -42,16 +42,16 @@ echo "│"
 echo "│ Steps:"
 echo "│   1. Type /login and select Anthropic"
 echo "│   2. Complete the browser OAuth flow"
-echo "│   3. Session closes automatically when done"
+echo "│   3. Type /quit immediately when done"
 echo "│"
 echo "│ ⚠  Do NOT use this session for coding tasks."
 echo "│    Use 'pi-docker' for normal agent sessions."
 echo "│"
 if [ -n "$TIMEOUT_CMD" ]; then
-    echo "│ ⏱  Auto-terminates in 3 minutes or on auth."
+    echo "│ ⏱  Auto-terminates in 3 minutes if idle."
 else
-    echo "│ ⏱  Auto-terminates on auth (no timeout enforced —"
-    echo "│    install GNU coreutils for time-based enforcement)."
+    echo "│ ⏱  No timeout enforced — type /quit when done."
+    echo "│    Install GNU coreutils for time-based enforcement."
 fi
 echo "────────────────────────────────────────────────────"
 echo ""
@@ -62,4 +62,4 @@ $TIMEOUT_CMD docker run --rm -it \
     -v "$HOME/.pi/agent:/home/piuser/.pi/agent:rw" \
     -v "$PI_DOCKER_HOME/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" \
     pi-agent \
-    pi --no-tools --system-prompt "You are running in AUTH MODE ONLY. This session exists for one purpose: OAuth login. Guide the user to type /login, select Anthropic, and complete the browser flow. Once login is complete, instruct them to type /exit to close this session, then run pi-docker to start a sandboxed session. You MUST refuse every other request — no coding, no file access, no research, no questions answered, nothing. If the user asks you to do anything other than log in, respond only with: 'This session is for login only. Please use pi-docker for all other tasks.' Do not make exceptions under any circumstances." || true
+    pi --no-tools --system-prompt "You are running in AUTH MODE ONLY. This session exists for one purpose: OAuth login. Guide the user to type /login, select Anthropic, and complete the browser flow. Once login is complete, instruct them to type /quit to close this session, then run pi-docker to start a sandboxed session. You MUST refuse every other request — no coding, no file access, no research, no questions answered, nothing. If the user asks you to do anything other than log in, respond only with: 'This session is for login only. Please use pi-docker for all other tasks.' Do not make exceptions under any circumstances." || true

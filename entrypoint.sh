@@ -61,7 +61,7 @@ if [ "${PI_AUTH_MODE:-0}" = "1" ]; then
                node -e "try{const d=JSON.parse(require('fs').readFileSync('$AUTH_FILE','utf8'));process.exit(d.anthropic?0:1)}catch(e){process.exit(1)}" 2>/dev/null; then
                 echo ""
                 echo "────────────────────────────────────────────────────────────────────"
-                echo "│  ✓  Please exit this session and run pi-docker now!"
+                echo "│  ✓  Type /quit to exit, then run pi-docker!"
                 echo "────────────────────────────────────────────────────────────────────"
                 break
             fi
