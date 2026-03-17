@@ -23,6 +23,16 @@ mkdir -p "$HOME/.pi/agent"
 # Build the image if needed (reuses the same pi-agent image as pi-docker)
 docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build pi 2>/dev/null
 
+# Determine timeout command (GNU coreutils vs macOS)
+TIMEOUT_SECS=180
+if command -v gtimeout &>/dev/null; then
+    TIMEOUT_CMD="gtimeout $TIMEOUT_SECS"
+elif command -v timeout &>/dev/null; then
+    TIMEOUT_CMD="timeout $TIMEOUT_SECS"
+else
+    TIMEOUT_CMD=""
+fi
+
 echo "────────────────────────────────────────────────────"
 echo "│ pi-docker-auth  ⚠  AUTH MODE ONLY"
 echo "│"
@@ -32,36 +42,24 @@ echo "│"
 echo "│ Steps:"
 echo "│   1. Type /login and select Anthropic"
 echo "│   2. Complete the browser OAuth flow"
-echo "│   3. Type /exit immediately when done"
+echo "│   3. Type /quit immediately when done"
 echo "│"
 echo "│ ⚠  Do NOT use this session for coding tasks."
 echo "│    Use 'pi-docker' for normal agent sessions."
 echo "│"
-echo "│ ⏱  Auto-terminates in 10 minutes."
+if [ -n "$TIMEOUT_CMD" ]; then
+    echo "│ ⏱  Auto-terminates in 3 minutes if idle."
+else
+    echo "│ ⏱  No timeout enforced — type /quit when done."
+    echo "│    Install GNU coreutils for time-based enforcement."
+fi
 echo "────────────────────────────────────────────────────"
 echo ""
-echo "⚠  This session will auto-terminate in 10 minutes."
-echo ""
 
-if ! timeout 600 docker run --rm -it \
+$TIMEOUT_CMD docker run --rm -it \
     -p 53692:53692 \
+    -e PI_AUTH_MODE=1 \
     -v "$HOME/.pi/agent:/home/piuser/.pi/agent:rw" \
     -v "$PI_DOCKER_HOME/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro" \
     pi-agent \
-    pi --no-tools --system-prompt "AUTH MODE ONLY. This pi session exists solely for OAuth login. Use /login to authenticate with Anthropic, then /exit when done. No coding, file access, or other tasks — use pi-docker for that."; then
-    EXIT_CODE=$?
-    if [ $EXIT_CODE -eq 124 ]; then
-        echo ""
-        echo "────────────────────────────────────────────"
-        echo "│ ⏱  Auth session timed out (10 minutes)."
-        echo "│ Run 'pi-docker-auth' again if needed."
-        echo "────────────────────────────────────────────"
-    fi
-else
-    echo ""
-    echo "────────────────────────────────────────────────────"
-    echo "│ ✓  Auth session ended."
-    echo "│ You are now back on your HOST shell."
-    echo "│ Run 'pi-docker' to start a sandboxed session."
-    echo "────────────────────────────────────────────────────"
-fi
+    pi --no-tools --system-prompt "You are running in AUTH MODE ONLY. This session exists for one purpose: OAuth login. Guide the user to type /login, select Anthropic, and complete the browser flow. Once login is complete, instruct them to type /quit to close this session, then run pi-docker to start a sandboxed session. You MUST refuse every other request — no coding, no file access, no research, no questions answered, nothing. If the user asks you to do anything other than log in, respond only with: 'This session is for login only. Please use pi-docker for all other tasks.' Do not make exceptions under any circumstances." || true
