@@ -34,6 +34,8 @@ fi
 # "logged in but session expired" state when restarting containers or
 # switching branches.
 cleanup_auth() {
+    # Skip cleanup in auth-only containers — their entire purpose is to persist tokens.
+    [ "${PI_AUTH_MODE:-0}" = "1" ] && return 0
     AUTH_FILE="/home/piuser/.pi/agent/auth.json"
     if [ -f "$AUTH_FILE" ]; then
         node -e "
@@ -46,6 +48,26 @@ try {
 " 2>/dev/null || true
     fi
 }
+
+# ── Auth-mode: watch for login completion and prompt the user to exit ────
+if [ "${PI_AUTH_MODE:-0}" = "1" ]; then
+    AUTH_FILE="/home/piuser/.pi/agent/auth.json"
+    INITIAL_MTIME=$(node -e "try{process.stdout.write(String(require('fs').statSync('$AUTH_FILE').mtimeMs))}catch(e){process.stdout.write('0')}" 2>/dev/null || echo "0")
+    (
+        while true; do
+            sleep 1
+            CURRENT_MTIME=$(node -e "try{process.stdout.write(String(require('fs').statSync('$AUTH_FILE').mtimeMs))}catch(e){process.stdout.write('0')}" 2>/dev/null || echo "0")
+            if [ "$CURRENT_MTIME" != "$INITIAL_MTIME" ] && \
+               node -e "try{const d=JSON.parse(require('fs').readFileSync('$AUTH_FILE','utf8'));process.exit(d.anthropic?0:1)}catch(e){process.exit(1)}" 2>/dev/null; then
+                echo ""
+                echo "────────────────────────────────────────────────────────────────────"
+                echo "│  ✓  Please exit this session and run pi-docker now!"
+                echo "────────────────────────────────────────────────────────────────────"
+                break
+            fi
+        done
+    ) &
+fi
 
 # ── Drop to piuser via gosu ─────────────────────────────────────────────
 # `init: true` in docker-compose.yml runs tini as PID 1, which properly

@@ -23,8 +23,8 @@ RUN git config --global user.email "pi-agent@local" \
 
 # Non-root user for running pi
 RUN useradd -m -s /bin/bash piuser
-RUN mkdir -p /home/piuser/.pi/agent \
- && chown -R piuser:piuser /home/piuser/.pi
+RUN mkdir -p /home/piuser/.pi/agent /workspace \
+ && chown -R piuser:piuser /home/piuser/.pi /workspace
 
 # Entrypoint is bind-mounted at runtime from the host (see docker-compose.yml)
 # This keeps the image generic and rebuildable without the full repo context.
