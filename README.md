@@ -76,7 +76,7 @@ echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-To update later: `git -C ~/.pi-docker pull`
+To update later: `rsync -av --delete  --exclude='.git' --exclude='.gitignore' --exclude='.gh-auth-token' /Users/lbrcs/Documents/pi-docker/ ~/.pi-docker/`
 
 ---
 
