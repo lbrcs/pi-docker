@@ -22,6 +22,15 @@ detect_ollama_host() {
     esac
 }
 
+# Return the host stored in the override file, falling back to platform default.
+get_configured_host() {
+    if [ -f "$OVERRIDE_FILE" ]; then
+        grep -oP 'OLLAMA_HOST: "http://\K[^:]+' "$OVERRIDE_FILE" 2>/dev/null || detect_ollama_host
+    else
+        detect_ollama_host
+    fi
+}
+
 # ── Ollama API helpers ────────────────────────────────────────────────────
 ollama_api_url() {
     echo "http://localhost:11434"
@@ -147,8 +156,7 @@ cmd_enable() {
     # Auto-sync models if Ollama is running
     if ollama_is_running; then
         echo ""
-        echo "── Syncing installed Ollama models ──"
-        cmd_sync_quiet "$host"
+        cmd_sync 1
     else
         # Write empty models.json
         write_models_json "$host"
@@ -207,8 +215,12 @@ cmd_list() {
     done <<< "$installed"
 }
 
-cmd_sync_quiet() {
-    local host="${1:-$(detect_ollama_host)}"
+cmd_sync() {
+    local print_header="${1:-1}"
+    [ "$print_header" = "1" ] && echo "── Syncing Ollama models to models.json ──"
+
+    local host
+    host=$(get_configured_host)
 
     if ! ollama_is_running; then
         echo "⚠  Ollama is not running — cannot sync."
@@ -234,19 +246,6 @@ cmd_sync_quiet() {
     echo "✓  models.json updated (${#models[@]} model(s))"
 }
 
-cmd_sync() {
-    echo "── Syncing Ollama models to models.json ──"
-
-    local host
-    if [ -f "$OVERRIDE_FILE" ]; then
-        host=$(grep -oP 'OLLAMA_HOST: "http://\K[^:]+' "$OVERRIDE_FILE" 2>/dev/null || detect_ollama_host)
-    else
-        host=$(detect_ollama_host)
-    fi
-
-    cmd_sync_quiet "$host"
-}
-
 cmd_add() {
     local model="$1"
     if [ -z "$model" ]; then
@@ -256,11 +255,7 @@ cmd_add() {
     fi
 
     local host
-    if [ -f "$OVERRIDE_FILE" ]; then
-        host=$(grep -oP 'OLLAMA_HOST: "http://\K[^:]+' "$OVERRIDE_FILE" 2>/dev/null || detect_ollama_host)
-    else
-        host=$(detect_ollama_host)
-    fi
+    host=$(get_configured_host)
 
     # Check if already in models.json
     if models_in_json | grep -qxF "$model"; then
@@ -292,11 +287,7 @@ cmd_remove() {
     fi
 
     local host
-    if [ -f "$OVERRIDE_FILE" ]; then
-        host=$(grep -oP 'OLLAMA_HOST: "http://\K[^:]+' "$OVERRIDE_FILE" 2>/dev/null || detect_ollama_host)
-    else
-        host=$(detect_ollama_host)
-    fi
+    host=$(get_configured_host)
 
     local models=()
     while IFS= read -r m; do
