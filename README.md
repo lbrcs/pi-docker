@@ -65,11 +65,8 @@ The PAT needs **Contents: Read & write** and **Pull requests: Read & write** on 
 ## 3. Installation
 
 ```bash
-# Clone this repo once — anywhere you like
-git clone https://github.com/YOUR_USER/pi-docker.git ~/pi-docker
-
-# Install to ~/.pi-docker
-rsync -av --exclude='.git' ~/pi-docker/ ~/.pi-docker/
+# Clone directly to ~/.pi-docker
+git clone https://github.com/YOUR_USER/pi-docker.git ~/.pi-docker
 
 # Make the launchers executable
 chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth ~/.pi-docker/pi-docker-models
@@ -78,6 +75,8 @@ chmod +x ~/.pi-docker/pi-docker ~/.pi-docker/pi-docker-auth ~/.pi-docker/pi-dock
 echo 'export PATH="$HOME/.pi-docker:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
+
+To update later: `git -C ~/.pi-docker pull`
 
 ---
 
@@ -96,7 +95,7 @@ This launches pi in a **restricted, auth-only session** — no repo mounted, no 
 
 > ⚠ **Auth-only mode:** The `pi-docker-auth` session deliberately disables all coding tools. Do not use it for coding tasks — use `pi-docker` for normal agent sessions.
 
-> ⏱ **10-minute timeout:** The auth container automatically terminates after 10 minutes. If it times out before you finish, simply run `pi-docker-auth` again.
+> ⏱ **3-minute timeout:** The auth container automatically terminates after 3 minutes. If it times out before you finish, simply run `pi-docker-auth` again.
 
 **Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
 

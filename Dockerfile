@@ -17,16 +17,16 @@ RUN sed -i 's/const CALLBACK_HOST = "127.0.0.1"/const CALLBACK_HOST = "0.0.0.0"/
     /usr/local/lib/node_modules/@mariozechner/pi-coding-agent/node_modules/@mariozechner/pi-ai/dist/utils/oauth/anthropic.js
 
 # Git identity for commits made inside the container
+# (credential.helper is configured per-session by entrypoint.sh)
 RUN git config --global user.email "pi-agent@local" \
- && git config --global user.name "pi-agent" \
- && git config --global credential.helper store
+ && git config --global user.name "pi-agent"
 
 # Non-root user for running pi
 RUN useradd -m -s /bin/bash piuser
 RUN mkdir -p /home/piuser/.pi/agent /workspace \
  && chown -R piuser:piuser /home/piuser/.pi /workspace
 
-# Entrypoint is bind-mounted at runtime from the host (see docker-compose.yml)
-# This keeps the image generic and rebuildable without the full repo context.
+# entrypoint.sh is bind-mounted from the host at runtime (see docker-compose.yml),
+# keeping the image generic so it doesn't need a rebuild when the script changes.
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["pi"]

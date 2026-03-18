@@ -94,16 +94,14 @@ except Exception:
     fi
 fi
 
-# ── Ensure .worktrees/ is gitignored ─────────────────────────────────────
+# ── Ensure pi-managed dirs are gitignored ────────────────────────────────
 GITIGNORE="$REPO_ROOT/.gitignore"
-if ! grep -qxF '.worktrees/' "$GITIGNORE" 2>/dev/null; then
-    echo ".worktrees/" >> "$GITIGNORE"
-    echo "[setup] Added .worktrees/ to .gitignore"
-fi
-if ! grep -qxF '.pi/' "$GITIGNORE" 2>/dev/null; then
-    echo ".pi/" >> "$GITIGNORE"
-    echo "[setup] Added .pi/ to .gitignore"
-fi
+for entry in '.worktrees/' '.pi/'; do
+    if ! grep -qxF "$entry" "$GITIGNORE" 2>/dev/null; then
+        echo "$entry" >> "$GITIGNORE"
+        echo "[setup] Added $entry to .gitignore"
+    fi
+done
 
 # ── Launch ────────────────────────────────────────────────────────────────
 # ── Build compose file list (add override if Ollama is enabled) ───────────
