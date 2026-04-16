@@ -124,6 +124,10 @@ services:
   pi:
     environment:
       OLLAMA_HOST: "http://${host}:11434"
+    deploy:
+      resources:
+        limits:
+          memory: 0
 EOF
 }
 
