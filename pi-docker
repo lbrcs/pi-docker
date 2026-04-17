@@ -165,11 +165,21 @@ _check_pi_update() {
 
     # Fetch latest from npm registry via curl — no npm required on the host.
     # --max-time 5 keeps the check bounded when the network is slow or offline.
-    local latest
-    latest=$(curl -sf --max-time 5 \
-        "https://registry.npmjs.org/@mariozechner%2Fpi-coding-agent" 2>/dev/null \
-        | python3 -c "import json,sys; print(json.load(sys.stdin)['dist-tags']['latest'])" 2>/dev/null \
-        | tr -d '[:space:]')
+    local latest registry_json
+    registry_json=$(curl -sf --max-time 5 \
+        "https://registry.npmjs.org/@mariozechner%2Fpi-coding-agent" 2>/dev/null || true)
+    [ -z "$registry_json" ] && return
+
+    if command -v python3 >/dev/null 2>&1; then
+        latest=$(printf '%s' "$registry_json" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['dist-tags']['latest'])" 2>/dev/null)
+    else
+        # Fallback parser for hosts without python3
+        latest=$(printf '%s' "$registry_json" \
+            | tr -d '\n' \
+            | sed -n 's/.*"latest"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    fi
+    latest=$(printf '%s' "$latest" | tr -d '[:space:]')
     [ -z "$latest" ] && return
 
     echo "${installed}|${latest}|${now}" > "$cache_file"
