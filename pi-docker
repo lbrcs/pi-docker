@@ -177,7 +177,7 @@ _check_pi_update() {
         # Fallback parser for hosts without python3
         latest=$(printf '%s' "$registry_json" \
             | tr -d '\n' \
-            | sed -n 's/.*"latest"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            | sed -n 's/.*"dist-tags"[^}]*"latest"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
     fi
     latest=$(printf '%s' "$latest" | tr -d '[:space:]')
     [ -z "$latest" ] && return
