@@ -171,7 +171,11 @@ To allow a new domain:
 acl allowed_domains dstdomain new-domain.example.com
 ```
 
-Then restart the proxy: `docker compose restart proxy`
+Then restart the proxy (use the `project:` value printed by `pi-docker`, e.g. `pi-my-project`):
+
+```bash
+docker compose -f ~/.pi-docker/docker-compose.yml -p pi-my-project restart proxy
+```
 
 ### 5c. Agent Defaults (`AGENTS.md` + `extensions/`)
 
@@ -213,7 +217,7 @@ What happens:
 1. The launcher detects the repo root and current branch.
 2. It checks for `PI_GH_TOKEN`.
 3. It ensures `.worktrees/` is in the repo's `.gitignore`.
-4. It runs `docker compose run --rm pi` with the repo mounted at `/workspace`.
+4. It runs `docker compose -p <repo-scoped-project> run --rm pi` with the repo mounted at `/workspace`.
 
 ---
 
@@ -337,11 +341,13 @@ If you prefer not to use the script, see the comments in `docker-compose.yml` an
 ### Viewing logs
 
 ```bash
+# Use the `project:` value printed by pi-docker (example: pi-my-project)
+
 # Proxy logs (see what's being allowed/denied)
-docker compose -f ~/pi-docker/docker-compose.yml logs proxy
+docker compose -f ~/.pi-docker/docker-compose.yml -p pi-my-project logs proxy
 
 # Pi agent logs
-docker compose -f ~/pi-docker/docker-compose.yml logs pi
+docker compose -f ~/.pi-docker/docker-compose.yml -p pi-my-project logs pi
 ```
 
 ---

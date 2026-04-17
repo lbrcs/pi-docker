@@ -130,6 +130,7 @@ done
 # fully independent — tearing down one never affects another.
 COMPOSE_PROJECT="pi-$(basename "$REPO_ROOT" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/-\+$//')"
 echo "│ project: $COMPOSE_PROJECT"
+echo "│ compose: docker compose -f \"$PI_DOCKER_HOME/docker-compose.yml\" -p \"$COMPOSE_PROJECT\" ..."
 echo "────────────────────────────────────────────"
 
 # ── Tear down any stale session for this repo ─────────────────────────────
