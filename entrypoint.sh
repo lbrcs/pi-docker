@@ -41,9 +41,7 @@ cleanup_auth() {
         node -e "
 const fs = require('fs');
 try {
-    const data = JSON.parse(fs.readFileSync('$AUTH_FILE', 'utf8'));
-    delete data.anthropic;
-    fs.writeFileSync('$AUTH_FILE', JSON.stringify(data, null, 2));
+    fs.writeFileSync('$AUTH_FILE', JSON.stringify({}, null, 2));
 } catch(e) {}
 " 2>/dev/null || true
     fi
@@ -58,7 +56,7 @@ if [ "${PI_AUTH_MODE:-0}" = "1" ]; then
             sleep 1
             CURRENT_MTIME=$(node -e "try{process.stdout.write(String(require('fs').statSync('$AUTH_FILE').mtimeMs))}catch(e){process.stdout.write('0')}" 2>/dev/null || echo "0")
             if [ "$CURRENT_MTIME" != "$INITIAL_MTIME" ] && \
-               node -e "try{const d=JSON.parse(require('fs').readFileSync('$AUTH_FILE','utf8'));process.exit(d.anthropic?0:1)}catch(e){process.exit(1)}" 2>/dev/null; then
+               node -e "try{const d=JSON.parse(require('fs').readFileSync('$AUTH_FILE','utf8'));process.exit(Object.keys(d).length>0?0:1)}catch(e){process.exit(1)}" 2>/dev/null; then
                 echo ""
                 echo "────────────────────────────────────────────────────────────────────"
                 echo "│  ✓  Type /quit to exit, then run pi-docker!"
