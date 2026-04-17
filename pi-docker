@@ -149,9 +149,17 @@ _check_pi_update() {
 
     # Read installed version from image without starting a container:
     # docker create+cp is metadata-only (no entrypoint, no process spawned)
-    local installed cid
+    local installed cid package_json
     cid=$(docker create pi-agent 2>/dev/null) || return
     installed=$(docker cp "$cid:/etc/pi-agent-version" - 2>/dev/null | tar -xOf - 2>/dev/null | tr -d '[:space:]')
+    if [ -z "$installed" ]; then
+        package_json=$(docker cp "$cid:/usr/local/lib/node_modules/@mariozechner/pi-coding-agent/package.json" - 2>/dev/null | tar -xOf - 2>/dev/null)
+        if [ -n "$package_json" ]; then
+            installed=$(printf '%s' "$package_json" \
+                | python3 -c "import json,sys; print(json.load(sys.stdin).get('version', ''))" 2>/dev/null \
+                | tr -d '[:space:]')
+        fi
+    fi
     docker rm -f "$cid" >/dev/null 2>&1
     [ -z "$installed" ] && return
 
