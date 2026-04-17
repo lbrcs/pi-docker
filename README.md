@@ -31,8 +31,9 @@ Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker contain
 │  │  │  pi-agent    │──────▶  proxy (squid)       │    │ |
 │  │  │              │      │  allowlist only:     │    │ │
 │  │  │  /workspace  │      │   api.anthropic.com  │    │ │
-│  │  │  = your repo │      │   github.com         │    │ │
-│  │  │              │      │   api.github.com     │    │ │
+│  │  │  = your repo │      │   claude.ai          │    │ │
+│  │  │              │      │   api.githubcopilot.com│   │ │
+│  │  │              │      │   github.com + more  │    │ │
 │  │  └──────────────┘      └──────────────────────┘    │ │
 │  │        pi-net (bridge network)                     │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -43,7 +44,7 @@ Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker contain
 |---|---|
 | **pi-docker launcher** | Detects the repo root, sets env vars, calls `docker compose run` |
 | **entrypoint.sh** | Injects default `AGENTS.md` + extensions if the repo has none, drops to non-root user |
-| **proxy (squid)** | Allows only `api.anthropic.com`, `github.com`, `api.github.com` — blocks everything else |
+| **proxy (squid)** | Allows only allowlisted domains (Anthropic, Claude, GitHub, GitHub Copilot) — blocks everything else |
 | **pi-agent container** | Runs pi with `http_proxy` pointed at the squid sidecar |
 | **worktree-subagent extension** | Lets pi spawn autonomous subagents in isolated git worktrees |
 
@@ -82,24 +83,43 @@ To update later: `rsync -av --delete  --exclude='.git' --exclude='.gitignore' --
 
 ## 4. Authentication
 
-### First-time Anthropic login
+Pi supports three authentication methods. The launcher warns and prompts if none is configured.
 
-Pi uses OAuth to authenticate with your Claude Pro/Max subscription. Because the OAuth flow requires a browser redirect to `localhost`, authentication runs in a separate container with host networking:
+### Option A: Anthropic subscription (Claude Pro / Max)
 
 ```bash
-# Run once (or whenever your refresh token expires)
+# Run once (or whenever your session expires)
 pi-docker-auth
 ```
 
-This launches pi in a **restricted, auth-only session** — no repo mounted, no GitHub access, no proxy, and no file/bash tools (`--no-tools`). Type `/login`, select **Anthropic**, and complete the browser flow. Tokens are saved to `~/.pi/agent/auth.json` and automatically shared with `pi-docker` via a bind mount.
+This launches pi in a **restricted, auth-only session** — no repo mounted, no proxy, no coding tools. Type `/login`, select **Anthropic**, and complete the browser OAuth flow. Tokens are saved to `~/.pi/agent/auth.json` and shared with `pi-docker` via a bind mount.
+
+### Option B: GitHub Copilot subscription
+
+```bash
+pi-docker-auth
+```
+
+Same flow as above — type `/login` and select **GitHub Copilot** instead. Your Copilot subscription gives access to the models available through it. Tokens are saved alongside Anthropic tokens in `~/.pi/agent/auth.json`.
+
+### Option C: Anthropic API key
+
+Set `ANTHROPIC_API_KEY` in your environment before running `pi-docker`:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+pi-docker
+```
+
+The key is passed into the container automatically. No `pi-docker-auth` run is needed.
+
+---
 
 > ⚠ **Auth-only mode:** The `pi-docker-auth` session deliberately disables all coding tools. Do not use it for coding tasks — use `pi-docker` for normal agent sessions.
 
 > ⏱ **3-minute timeout:** The auth container automatically terminates after 3 minutes. If it times out before you finish, simply run `pi-docker-auth` again.
 
-**Token refresh is automatic.** Inside the sandboxed `pi-docker` container, pi refreshes expired tokens via the Anthropic API (no browser needed). You only need to re-run `pi-docker-auth` if the refresh token itself expires.
-
-**Sessions are cleared on container stop.** When a `pi-docker` container exits, the `anthropic` key is automatically removed from `auth.json`. This means every new `pi-docker` session starts in a logged-out state, so you will never encounter a stale "logged in but expired" situation. Run `pi-docker-auth` once before each working session (or rely on automatic token refresh if your session was recent).
+**Sessions are fully cleared on container stop.** When a `pi-docker` container exits, `auth.json` is wiped entirely — all provider tokens are removed. This ensures no credentials persist between sessions. Run `pi-docker-auth` (or set `ANTHROPIC_API_KEY`) before each working session.
 
 > **Why a separate container?** Pi's OAuth callback server normally binds to `127.0.0.1`, making it unreachable via Docker port mapping. The Docker image patches it to bind to `0.0.0.0` so that `-p 53692:53692` works. No repo is mounted and no proxy is used — the container exists only for login.
 
@@ -130,10 +150,18 @@ The env var takes priority over the file. The launcher will warn you if neither 
 Edit `squid.conf` to add or remove domains. The defaults are:
 
 ```
-api.anthropic.com      # Claude API
-github.com             # git push / PR creation
-api.github.com         # gh CLI
-objects.githubusercontent.com  # GitHub raw content
+api.anthropic.com               # Claude API
+platform.claude.com             # Claude platform
+claude.ai                       # Claude web / OAuth
+statsig.anthropic.com           # Anthropic feature flags
+github.com                      # git push / PR creation
+api.github.com                  # gh CLI
+objects.githubusercontent.com   # GitHub raw content
+github-releases.githubusercontent.com
+release-assets.githubusercontent.com
+api.githubcopilot.com           # GitHub Copilot API
+copilot-proxy.githubusercontent.com  # Copilot model proxy
+registry.npmjs.org              # npm packages
 ```
 
 To allow a new domain:
@@ -303,6 +331,7 @@ If you prefer not to use the script, see the comments in `docker-compose.yml` an
 | Worktree conflicts | Run `/cleanup-all` to remove stale worktrees |
 | Image out of date after `pi-docker` update | Run `pi-docker --rebuild` to rebuild Docker images |
 | `⚠ Anthropic session token is expired` on startup | Run `pi-docker-auth` to re-authenticate; pi will attempt an automatic refresh but may fail if the refresh token is also expired |
+| `⚠ No Anthropic auth found` on startup | Run `pi-docker-auth` (Anthropic or Copilot login) or set `ANTHROPIC_API_KEY` |
 
 ### Viewing logs
 
@@ -329,7 +358,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 | **Worktree isolation** | Each subagent works in its own worktree — no conflicts |
 | **Read-only proxy filesystem** | Squid proxy container runs with `read_only: true`; only tmpfs dirs are writable |
 | **Credentials on tmpfs** | `.git-credentials` written to `/tmp` (tmpfs) — never touches persistent storage |
-| **Container stop clears auth** | Stopping the container wipes tmpfs — credentials don't survive restarts |
+| **Container stop clears auth** | On exit, `auth.json` is wiped entirely — all provider tokens (Anthropic, Copilot, etc.) are removed |
 
 ### What pi CAN do
 

@@ -80,6 +80,9 @@ services:
       # GitHub auth — fine-grained PAT passed in by the launcher
       GH_TOKEN: "${PI_GH_TOKEN:-}"
 
+      # API key auth — passed through if set on the host (alternative to OAuth)
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+
       # ── Local model fallback (managed by pi-docker-models script) ────
       # Run 'pi-docker-models ollama enable' to configure Ollama.
       # The script generates docker-compose.override.yml with OLLAMA_HOST.
