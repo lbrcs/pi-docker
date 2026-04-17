@@ -12,8 +12,8 @@ services:
     volumes:
       - ./squid.conf:/etc/squid/squid.conf:ro
     networks:
-      - pi-net      # receives pi's traffic on the isolated internal network
       - proxy-net   # the only container with a real internet route
+      - pi-net      # receives pi's traffic on the isolated internal network
     # No ports exposed to the host — only accessible within pi-net
     restart: "no"
 
