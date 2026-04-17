@@ -37,7 +37,7 @@ echo "────────────────────────�
 # ── Rebuild / update image if requested ──────────────────────────────────
 if [ "$UPDATE" -eq 1 ]; then
     echo "│ Updating Pi to latest version (no-cache build)..."
-    docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build --no-cache
+    docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build --no-cache pi
     rm -f "$PI_DOCKER_HOME/.version-cache"
     echo "│ Update complete."
     echo "────────────────────────────────────────────"
@@ -125,7 +125,7 @@ except Exception:
     fi
 fi
 
-# ── Check for Pi updates (cached, non-blocking) ───────────────────────────
+# ── Check for Pi updates (cached, bounded to ~5s on cache miss) ───────────
 _check_pi_update() {
     # Skip if image doesn't exist yet (first run before any build)
     docker image inspect pi-agent >/dev/null 2>&1 || return
@@ -147,14 +147,21 @@ _check_pi_update() {
         fi
     fi
 
-    # Read installed version from image (written by Dockerfile at build time)
-    local installed
-    installed=$(docker run --rm --entrypoint sh pi-agent -c 'cat /etc/pi-agent-version 2>/dev/null' 2>/dev/null | tr -d '[:space:]')
+    # Read installed version from image without starting a container:
+    # docker create+cp is metadata-only (no entrypoint, no process spawned)
+    local installed cid
+    cid=$(docker create pi-agent 2>/dev/null) || return
+    installed=$(docker cp "$cid:/etc/pi-agent-version" - 2>/dev/null | tar -xOf - 2>/dev/null | tr -d '[:space:]')
+    docker rm -f "$cid" >/dev/null 2>&1
     [ -z "$installed" ] && return
 
-    # Fetch latest from npm registry (skip gracefully if npm unavailable or offline)
+    # Fetch latest from npm registry via curl — no npm required on the host.
+    # --max-time 5 keeps the check bounded when the network is slow or offline.
     local latest
-    latest=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null | tr -d '[:space:]')
+    latest=$(curl -sf --max-time 5 \
+        "https://registry.npmjs.org/@mariozechner%2Fpi-coding-agent" 2>/dev/null \
+        | python3 -c "import json,sys; print(json.load(sys.stdin)['dist-tags']['latest'])" 2>/dev/null \
+        | tr -d '[:space:]')
     [ -z "$latest" ] && return
 
     echo "${installed}|${latest}|${now}" > "$cache_file"
