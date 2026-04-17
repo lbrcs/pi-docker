@@ -12,7 +12,8 @@ services:
     volumes:
       - ./squid.conf:/etc/squid/squid.conf:ro
     networks:
-      - pi-net
+      - proxy-net   # the only container with a real internet route
+      - pi-net      # receives pi's traffic on the isolated internal network
     # No ports exposed to the host — only accessible within pi-net
     restart: "no"
 
@@ -29,7 +30,9 @@ services:
       - proxy
 
     # ── Security ────────────────────────────────────────────────────────
-    # No NET_ADMIN, no elevated capabilities. Proxy is external (sidecar).
+    # pi-net is internal (no gateway) so this container has zero direct
+    # internet access — all outbound traffic must go via the proxy sidecar.
+    # No NET_ADMIN, no elevated capabilities needed.
     security_opt:
       - no-new-privileges:true
 
@@ -93,5 +96,8 @@ services:
 networks:
   pi-net:
     driver: bridge
+    internal: true  # no default gateway — pi cannot reach the internet directly
+  proxy-net:
+    driver: bridge  # internet-capable network used exclusively by the proxy
 
 volumes: {}
