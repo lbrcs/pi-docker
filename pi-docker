@@ -125,15 +125,21 @@ for entry in '.worktrees/' '.pi/'; do
     fi
 done
 
-# ── Tear down any stale session ──────────────────────────────────────────
+# ── Scope compose project name to this repo ──────────────────────────────
+# Each repo gets its own compose project so sessions in different repos are
+# fully independent — tearing down one never affects another.
+COMPOSE_PROJECT="pi-$(basename "$REPO_ROOT" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/-\+$//')"
+echo "│ project: $COMPOSE_PROJECT"
+echo "────────────────────────────────────────────"
+
+# ── Tear down any stale session for this repo ─────────────────────────────
 # Ensures the proxy always starts fresh with the current squid.conf.
-# Stale containers from a previous session would otherwise hold an outdated
-# config in memory, causing connection errors or missing allowlist entries.
-docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+# Scoped to COMPOSE_PROJECT so only this repo's containers are affected.
+docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" -p "$COMPOSE_PROJECT" down --remove-orphans 2>/dev/null || true
 
 # ── Launch ────────────────────────────────────────────────────────────────
 # ── Build compose file list (add override if Ollama is enabled) ───────────
-COMPOSE_ARGS=(-f "$PI_DOCKER_HOME/docker-compose.yml")
+COMPOSE_ARGS=(-f "$PI_DOCKER_HOME/docker-compose.yml" -p "$COMPOSE_PROJECT")
 if [ -f "$PI_DOCKER_HOME/docker-compose.override.yml" ]; then
     COMPOSE_ARGS+=(-f "$PI_DOCKER_HOME/docker-compose.override.yml")
     echo "│ ollama: enabled (override detected)"
