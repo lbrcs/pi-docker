@@ -27,7 +27,7 @@ Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker contain
 │  ┌──────────────── Docker ──────────────────────────────┐   │
 │  │                                                      │   │
 │  │  ┌─────────────────────────────────────────────┐     │   │
-│  │  │  pi-net  (internal — no gateway)            │     │   │
+│  │  │  pi-net  (internal — no direct egress)      │     │   │
 │  │  │                                             │     │   │
 │  │  │  ┌────────────┐     ┌───────────────────┐   │     │   │
 │  │  │  │  pi-agent  │────▶│  proxy (squid)    │   │     │   │
