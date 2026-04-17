@@ -58,27 +58,34 @@ if [ -z "$PI_GH_TOKEN" ]; then
     fi
 fi
 
-# ── Check for Anthropic auth ─────────────────────────────────────────────
+# ── Check for auth ───────────────────────────────────────────────────────
 PI_AUTH_FILE="$HOME/.pi/agent/auth.json"
 
 # Returns 0 if any auth method is configured: any subscription key in auth.json
-# (anthropic, claudeai, etc.) OR a direct ANTHROPIC_API_KEY env var.
+# (anthropic, copilot, etc.) OR a direct ANTHROPIC_API_KEY env var.
 _has_pi_auth() {
     [ -n "${ANTHROPIC_API_KEY:-}" ] && return 0
     [ -f "$PI_AUTH_FILE" ] || return 1
-    python3 -c "
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "
 import json, sys
 try:
     data = json.load(open('$PI_AUTH_FILE'))
     sys.exit(0 if data else 1)
-except: sys.exit(1)
+except:
+    sys.exit(1)
 " 2>/dev/null
+    else
+        # Fallback: non-empty file with at least one key character is good enough
+        grep -q '"[^"]\+":' "$PI_AUTH_FILE" 2>/dev/null
+    fi
 }
 
 if ! _has_pi_auth; then
     echo ""
-    echo "⚠   No Anthropic auth found."
-    echo "   Run 'pi-docker-auth' to log in via OAuth, or set ANTHROPIC_API_KEY."
+    echo "⚠   No auth configured."
+    echo "   Run 'pi-docker-auth' to log in (Anthropic or GitHub Copilot),"
+    echo "   or set ANTHROPIC_API_KEY."
     echo ""
     read -p "Continue without auth? [y/N] " -n 1 -r
     echo

@@ -32,7 +32,7 @@ Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker contain
 │  │  │              │      │  allowlist only:     │    │ │
 │  │  │  /workspace  │      │   api.anthropic.com  │    │ │
 │  │  │  = your repo │      │   claude.ai          │    │ │
-│  │  │              │      │   api.githubcopilot  │    │ │
+│  │  │              │      │   api.githubcopilot.com│   │ │
 │  │  │              │      │   github.com + more  │    │ │
 │  │  └──────────────┘      └──────────────────────┘    │ │
 │  │        pi-net (bridge network)                     │ │

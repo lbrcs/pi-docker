@@ -28,11 +28,10 @@ if [ -n "$GH_TOKEN" ]; then
     chown piuser:piuser /tmp/.git-credentials /home/piuser/.gitconfig
 fi
 
-# ── Logout Anthropic session on container stop ────────────────────────────
-# Removing the 'anthropic' key from auth.json on EXIT ensures that each new
-# pi-docker session starts unauthenticated. This prevents the confusing
-# "logged in but session expired" state when restarting containers or
-# switching branches.
+# ── Clear all provider tokens on container stop ───────────────────────────
+# Wiping auth.json entirely on EXIT ensures that each new pi-docker session
+# starts unauthenticated (no Anthropic, Copilot, or other provider tokens
+# persist). This prevents stale "logged in but expired" state across sessions.
 cleanup_auth() {
     # Skip cleanup in auth-only containers — their entire purpose is to persist tokens.
     [ "${PI_AUTH_MODE:-0}" = "1" ] && return 0
