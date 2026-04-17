@@ -1,6 +1,7 @@
 # Local auth tokens and secrets (never commit these)
 *.token
 .gh-auth-token
+.version-cache
 models.json
 docker-compose.override.yml
 squid-local.conf

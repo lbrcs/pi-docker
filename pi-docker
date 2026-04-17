@@ -4,12 +4,15 @@ set -e
 # ── Resolve pi-docker home (where this script lives) ─────────────────────
 PI_DOCKER_HOME="$(cd "$(dirname "$0")" && pwd -P)"
 
-# ── Parse --rebuild flag ──────────────────────────────────────────────────
+# ── Parse --rebuild / --update flags ─────────────────────────────────────
 REBUILD=0
+UPDATE=0
 PASSTHROUGH_ARGS=()
 for arg in "$@"; do
     if [ "$arg" = "--rebuild" ]; then
         REBUILD=1
+    elif [ "$arg" = "--update" ]; then
+        UPDATE=1
     else
         PASSTHROUGH_ARGS+=("$arg")
     fi
@@ -31,8 +34,14 @@ echo "│ branch: $BRANCH"
 echo "│ path:   $REPO_ROOT"
 echo "────────────────────────────────────────────"
 
-# ── Rebuild image if requested ────────────────────────────────────────────
-if [ "$REBUILD" -eq 1 ]; then
+# ── Rebuild / update image if requested ──────────────────────────────────
+if [ "$UPDATE" -eq 1 ]; then
+    echo "│ Updating Pi to latest version (no-cache build)..."
+    docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build --no-cache
+    rm -f "$PI_DOCKER_HOME/.version-cache"
+    echo "│ Update complete."
+    echo "────────────────────────────────────────────"
+elif [ "$REBUILD" -eq 1 ]; then
     echo "│ Rebuilding Docker images..."
     docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" build
     echo "│ Rebuild complete."
@@ -114,6 +123,51 @@ except Exception:
             echo ""
         fi
     fi
+fi
+
+# ── Check for Pi updates (cached, non-blocking) ───────────────────────────
+_check_pi_update() {
+    # Skip if image doesn't exist yet (first run before any build)
+    docker image inspect pi-agent >/dev/null 2>&1 || return
+
+    local cache_file="$PI_DOCKER_HOME/.version-cache"
+    local now; now=$(date +%s)
+    local cached_installed="" cached_latest="" cached_ts=0
+
+    if [ -f "$cache_file" ]; then
+        IFS='|' read -r cached_installed cached_latest cached_ts < "$cache_file" 2>/dev/null || true
+        if [ $((now - cached_ts)) -lt 3600 ] && [ -n "$cached_installed" ] && [ -n "$cached_latest" ]; then
+            if [ "$cached_installed" != "$cached_latest" ]; then
+                echo ""
+                echo "⚠   Pi update available: $cached_installed → $cached_latest"
+                echo "   Run 'pi-docker --update' to upgrade."
+                echo ""
+            fi
+            return
+        fi
+    fi
+
+    # Read installed version from image (written by Dockerfile at build time)
+    local installed
+    installed=$(docker run --rm --entrypoint sh pi-agent -c 'cat /etc/pi-agent-version 2>/dev/null' 2>/dev/null | tr -d '[:space:]')
+    [ -z "$installed" ] && return
+
+    # Fetch latest from npm registry (skip gracefully if npm unavailable or offline)
+    local latest
+    latest=$(npm view @mariozechner/pi-coding-agent version 2>/dev/null | tr -d '[:space:]')
+    [ -z "$latest" ] && return
+
+    echo "${installed}|${latest}|${now}" > "$cache_file"
+
+    if [ "$installed" != "$latest" ]; then
+        echo ""
+        echo "⚠   Pi update available: $installed → $latest"
+        echo "   Run 'pi-docker --update' to upgrade."
+        echo ""
+    fi
+}
+if [ "$UPDATE" -eq 0 ] && [ "$REBUILD" -eq 0 ]; then
+    _check_pi_update
 fi
 
 # ── Ensure pi-managed dirs are gitignored ────────────────────────────────

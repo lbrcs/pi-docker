@@ -8,8 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pi globally
-RUN npm install -g @mariozechner/pi-coding-agent
+# Install pi globally and record version for update checks
+RUN npm install -g @mariozechner/pi-coding-agent && \
+    node -e "process.stdout.write(require('/usr/local/lib/node_modules/@mariozechner/pi-coding-agent/package.json').version)" \
+    > /etc/pi-agent-version
 
 # Patch OAuth callback to bind to 0.0.0.0 instead of 127.0.0.1
 # so Docker port mapping can reach it (needed for pi-docker-auth on macOS)
