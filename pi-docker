@@ -125,6 +125,12 @@ for entry in '.worktrees/' '.pi/'; do
     fi
 done
 
+# ── Tear down any stale session ──────────────────────────────────────────
+# Ensures the proxy always starts fresh with the current squid.conf.
+# Stale containers from a previous session would otherwise hold an outdated
+# config in memory, causing connection errors or missing allowlist entries.
+docker compose -f "$PI_DOCKER_HOME/docker-compose.yml" down --remove-orphans 2>/dev/null || true
+
 # ── Launch ────────────────────────────────────────────────────────────────
 # ── Build compose file list (add override if Ollama is enabled) ───────────
 COMPOSE_ARGS=(-f "$PI_DOCKER_HOME/docker-compose.yml")

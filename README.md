@@ -9,35 +9,36 @@ Run [pi](https://github.com/mariozechner/pi) inside a locked-down Docker contain
 ## 1. Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Host                                                   │
-│                                                         │
-│   ~/pi-docker/          (this repo — cloned once)       │
-│     ├── pi-docker       launcher script                 │
-│     ├── entrypoint.sh   container init                  │
-│     ├── AGENTS.md       default agent rules             │
-│     ├── extensions/     default pi extensions           │
-│     ├── Dockerfile      pi agent image                   │
-│     ├── Dockerfile.proxy  squid image                    │
-│     ├── squid.conf      domain allowlist                │
-│     └── docker-compose.yml                              │
-│                                                         │
-│   ~/my-project/         (any repo you work on)          │
-│                                                         │
-│                                                         │
-│  ┌──────────────── Docker ────────────────────────────┐ │
-│  │                                                    │ │
-│  │  ┌──────────────┐      ┌──────────────────────┐    │ │
-│  │  │  pi-agent    │──────▶  proxy (squid)       │    │ |
-│  │  │              │      │  allowlist only:     │    │ │
-│  │  │  /workspace  │      │   api.anthropic.com  │    │ │
-│  │  │  = your repo │      │   claude.ai          │    │ │
-│  │  │              │      │   api.githubcopilot.com│   │ │
-│  │  │              │      │   github.com + more  │    │ │
-│  │  └──────────────┘      └──────────────────────┘    │ │
-│  │        pi-net (bridge network)                     │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Host                                                       │
+│                                                             │
+│   ~/pi-docker/          (this repo — cloned once)           │
+│     ├── pi-docker       launcher script                     │
+│     ├── entrypoint.sh   container init                      │
+│     ├── AGENTS.md       default agent rules                 │
+│     ├── extensions/     default pi extensions               │
+│     ├── Dockerfile      pi agent image                      │
+│     ├── Dockerfile.proxy  squid image                       │
+│     ├── squid.conf      domain allowlist                    │
+│     └── docker-compose.yml                                  │
+│                                                             │
+│   ~/my-project/         (any repo you work on)              │
+│                                                             │
+│  ┌──────────────── Docker ──────────────────────────────┐   │
+│  │                                                      │   │
+│  │  ┌─────────────────────────────────────────────┐     │   │
+│  │  │  pi-net  (internal — no gateway)            │     │   │
+│  │  │                                             │     │   │
+│  │  │  ┌────────────┐     ┌───────────────────┐   │     │   │
+│  │  │  │  pi-agent  │────▶│  proxy (squid)    │   │     │   │
+│  │  │  │ /workspace │     │  allowlist only   │   │     │   │
+│  │  │  └────────────┘     └────────┬──────────┘   │     │   │
+│  │  └───────────────────────────── │ ─────────────┘     │   │
+│  │                                 │ proxy-net           │   │
+│  │                                 ▼ (internet-capable)  │   │
+│  │                            [ internet ]               │   │
+│  └──────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | What it does |
@@ -349,7 +350,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 
 | Control | Implementation |
 |---|---|
-| **Network filtering** | Squid forward proxy — only allowlisted domains can be reached |
+| **Network filtering** | `pi-net` has `internal: true` — no default gateway, zero direct internet access. All outbound traffic must route through the Squid sidecar, which is the only container on the internet-capable `proxy-net` |
 | **No root in container** | `gosu` drops to `piuser` before running pi |
 | **No privilege escalation** | `no-new-privileges:true` security option |
 | **Resource limits** | Memory (4 GB), CPU (2 cores), PIDs (512) |
