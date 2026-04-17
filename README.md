@@ -350,7 +350,7 @@ docker compose -f ~/pi-docker/docker-compose.yml logs pi
 
 | Control | Implementation |
 |---|---|
-| **Network filtering** | `pi-net` has `internal: true` — no default gateway, zero direct internet access. All outbound traffic must route through the Squid sidecar, which is the only container on the internet-capable `proxy-net` |
+| **Network filtering** | `pi-net` has `internal: true`, so the `pi` agent is externally isolated and has no direct internet egress. All outbound traffic must route through the Squid sidecar, which is the only container with internet egress via `proxy-net` |
 | **No root in container** | `gosu` drops to `piuser` before running pi |
 | **No privilege escalation** | `no-new-privileges:true` security option |
 | **Resource limits** | Memory (4 GB), CPU (2 cores), PIDs (512) |
